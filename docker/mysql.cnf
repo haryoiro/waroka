@@ -1,0 +1,12 @@
+[mysqld]
+information_schema_stats_expiry = 0
+default_character_set           = utf8mb4
+
+default_storage_engine          = InnoDB
+character_set_server            = "utf8mb4"
+collation_server                = "utf8mb4_general_ci"
+sql_mode                        = ""
+
+max_connections = 500000
+max_allowed_packet=128M
+wait_timeout = 3600

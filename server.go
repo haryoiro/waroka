@@ -1,108 +1,63 @@
 package main
 
 import (
-    "github.com/labstack/echo/v4"
-    "github.com/labstack/echo/v4/middleware"
-    "net/http"
+	"github.com/joho/godotenv"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"log"
+	"net/http"
+	d "waroka/db"
+	"waroka/di"
+	"waroka/model"
 )
 
 func main() {
-    e := echo.New()
 
-    e.Use(middleware.Recover())
-    e.Use(middleware.Logger())
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
-    e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-        AllowCredentials: true,
-        AllowOrigins: []string{"http://localhost:8080"},
-        AllowMethods: []string{
-            http.MethodPost,
-            http.MethodGet,
-        },
-    }))
+	e := echo.New()
 
+	db, err := d.Connect()
+	if err != nil {
+		panic("MySQLへの接続に失敗しました。")
+	}
 
-    e.GET("/", func(c echo.Context) error {
-        return c.String(http.StatusOK, "Hello, World!")
-    })
+	db.Exec("SHOW ENGINE INNODB STATUS")
 
-    e.POST("/signup", signup)
-    e.POST("/signin", signin)
+	err = db.AutoMigrate(&model.User{}, &model.Room{}, &model.PaymentDestination{}, &model.PaymentDetail{})
+	if err != nil {
+		panic("マイグレーションに失敗しました。")
+	}
 
+	db.Exec("SET FOREIGN_KEY_CHECKS=1")
 
-    e.Logger.Fatal(e.Start(":8080"))
-}
+	e.Use(middleware.Recover())
+	e.Use(middleware.Logger())
 
+	//e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+	//   AllowCredentials: true,
+	//   AllowOrigins: []string{"http://localhost:8080"},
+	//   AllowMethods: []string{
+	//       http.MethodPost,
+	//       http.MethodGet,
+	//   },
+	//}))
 
-type User struct {
-    Name string `json:"name" xml:"name" form:"name" query:"name"`
-    Password string `json:"password" xml:"password" form:"password" query:"password"`
-}
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Hello, World!")
+	})
 
+	authController := di.InitializeAuthController(db)
+	authController.RegisterRoutes(e)
 
-func signup(c echo.Context) error {
-    var user User
-    err := c.Bind(&user)
-    if err != nil {
-        return c.String(http.StatusBadRequest, "フォームの値が不正です。")
-    }
+	userController := di.InitializeUserController(db)
+	userController.RegisterRoutes(e)
 
-    // User重複検索
+	roomController := di.InitializeRoomController(db)
+	roomController.RegisterRoutes(e)
 
-    // password8種か
-
-    // User作成
-
-    cookie := &http.Cookie{
-        Name: "user",
-        Value: user.Name,
-        MaxAge: 604800,
-        Path: "/",
-    }
-
-    c.SetCookie(cookie)
-    return c.String(http.StatusCreated, "登録完了")
-}
-
-func signin(c echo.Context) error {
-    var user User
-    err := c.Bind(&user); if err != nil {
-        return c.String(http.StatusBadRequest, "パスワードかIDが不正です")
-    }
-
-    // ユーザー検索
-
-    // パスワーdハッシュ化
-
-    // 検証
-
-    cookie := &http.Cookie{
-        Name: "user",
-        Value: user.Name,
-        MaxAge: 608400,
-        Path: "/",
-    }
-
-    c.SetCookie(cookie)
-    return c.String(http.StatusCreated, "ログイン成功")
-}
-
-
-func AuthenticateMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-    return func(c echo.Context) error {
-
-        cookie, err := c.Cookie("user")
-        if err != nil {
-            return c.String(http.StatusNotAcceptable, "認証されていません")
-        }
-
-        // ユーザーを検索
-        c.Set("user", cookie.Value)
-
-        if err := next(c); err != nil {
-            c.Error(err)
-        }
-
-        return nil
-    }
+	e.Logger.Fatal(e.Start(":8080"))
+	defer e.Logger.Fatal(e.Close())
 }

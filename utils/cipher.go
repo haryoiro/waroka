@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"golang.org/x/crypto/blowfish"
@@ -7,7 +7,8 @@ import (
 	"github.com/andreburgaud/crypt2go/padding"
 )
 
-func encrypt(pt, key []byte) []byte {
+func Encrypt(pt []byte) ([]byte, error) {
+	key := []byte(GetSecret())
 	block, err := blowfish.NewCipher(key)
 	if err != nil {
 		panic(err.Error())
@@ -16,17 +17,18 @@ func encrypt(pt, key []byte) []byte {
 	padder := padding.NewPkcs5Padding()
 	pt, err = padder.Pad(pt) // pad last block of plaintext if block size less than block cipher size
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 	ct := make([]byte, len(pt))
 	mode.CryptBlocks(ct, pt)
-	return ct
+	return ct, nil
 }
 
-func decrypt(ct, key []byte) []byte {
+func Decrypt(ct []byte) ([]byte, error) {
+	key := []byte(GetSecret())
 	block, err := blowfish.NewCipher(key)
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 	mode := ecb.NewECBDecrypter(block)
 	pt := make([]byte, len(ct))
@@ -34,7 +36,7 @@ func decrypt(ct, key []byte) []byte {
 	padder := padding.NewPkcs5Padding()
 	pt, err = padder.Unpad(pt) // unpad plaintext after decryption
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
-	return pt
+	return pt, nil
 }
