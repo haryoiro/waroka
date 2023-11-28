@@ -7,6 +7,7 @@ import (
 	"github.com/google/wire"
 	"gorm.io/gorm"
 	"waroka/controllers"
+	"waroka/controllers/room"
 	"waroka/repository"
 	"waroka/services"
 )
@@ -42,13 +43,16 @@ func InitializeRoomController(db *gorm.DB) *controllers.RoomController {
 	return &controllers.RoomController{}
 }
 
-func InitializePaymentController(db *gorm.DB) *controllers.RoomController {
+func InitializePaymentController(db *gorm.DB) *room.PaymentController {
 	wire.Build(
 		repository.NewUserRepository,
 		repository.NewPaymentDestinationRepository,
 		repository.NewPaymentDetailRepository,
+		repository.NewRoomRepository,
 		services.NewRoomService,
 		services.NewUserService,
 		services.NewPaymentService,
+		room.NewPaymentController,
 	)
+	return &room.PaymentController{}
 }
