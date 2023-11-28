@@ -1,0 +1,37 @@
+-- +migrate Up
+CREATE TABLE IF NOT EXISTS users
+(
+    id         BIGINT AUTO_INCREMENT NOT NULL,
+    name       VARCHAR(255)          NOT NULL,
+    password   VARCHAR(255)          NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_users PRIMARY KEY (id)
+)
+    ENGINE = InnoDB
+    DEFAULT CHARSET = utf8
+    COLLATE = utf8_general_ci;
+
+CREATE TABLE IF NOT EXISTS rooms
+(
+    id       BIGINT AUTO_INCREMENT NOT NULL,
+    name     VARCHAR(255)          NOT NULL,
+    password VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_rooms PRIMARY KEY (id)
+)
+    ENGINE = InnoDB
+    DEFAULT CHARSET = utf8
+    COLLATE = utf8_general_ci;
+
+-- +migrate Down
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS rooms;
+DROP TABLE IF EXISTS users_rooms;
+
+SET FOREIGN_KEY_CHECKS = 0;
