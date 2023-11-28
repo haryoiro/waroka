@@ -19,7 +19,10 @@ jobs:
 
       - name: Build for Linux
         run: |
-          export GOOS=linux GOARCH=amd64
+          export GOOS=linux GOARCH=amd64 
+          go install github.com/rubenv/sql-migrate/...@latest
+          sql-migrate down -env=production
+          sql-migrate up -env=production  
           CGO_ENABLED=0 go build -o ./waroka -ldflags "-s -w"
 
       - name: Install SSH key
