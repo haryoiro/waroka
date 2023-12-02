@@ -35,12 +35,44 @@ func (u *UserController) RegisterRoutes(e *echo.Echo) {
 	user.GET("/:id", u.getById)
 }
 
+type UserDTO struct {
+	ID        uint      `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt string    `json:"created_at"`
+	UpdatedAt string    `json:"updated_at"`
+	Rooms     []RoomDTO `json:"rooms"`
+}
+type RoomDTO struct {
+	ID       uint   `json:"id"`
+	RoomName string `json:"room_name"`
+}
+
+func UserToDTO(u model.User) UserDTO {
+	return UserDTO{
+		ID:        u.ID,
+		Name:      u.Name,
+		CreatedAt: u.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt: u.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+}
+
+func UsersToDTOs(users []model.User) []UserDTO {
+	var userDTOs []UserDTO
+	for _, user := range users {
+		userDTOs = append(userDTOs, UserToDTO(user))
+	}
+	return userDTOs
+}
+
 func (u *UserController) getAll(c echo.Context) error {
 	users, err := u.userService.GetAllUsers()
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, "ユーザーを取得できません")
 	}
-	return c.JSON(http.StatusOK, users)
+
+	userDtos := UsersToDTOs(users)
+
+	return c.JSON(http.StatusOK, userDtos)
 }
 
 func (u *UserController) getById(c echo.Context) error {
@@ -56,7 +88,10 @@ func (u *UserController) getById(c echo.Context) error {
 	if user == nil {
 		return c.JSON(http.StatusNotFound, "ユーザーが見つかりませんでした")
 	}
-	return c.JSON(http.StatusOK, user)
+
+	userDto := UserToDTO(*user)
+
+	return c.JSON(http.StatusOK, userDto)
 }
 
 func (u *UserController) create(c echo.Context) error {
@@ -67,5 +102,8 @@ func (u *UserController) create(c echo.Context) error {
 	if err := u.userService.CreateUser(user); err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(http.StatusCreated, user)
+
+	userDto := UserToDTO(*user)
+
+	return c.JSON(http.StatusCreated, userDto)
 }

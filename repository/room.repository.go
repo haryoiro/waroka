@@ -43,8 +43,10 @@ func (r RoomRepository) JoinRoom(room *model.Room, user *model.User) error {
 		return errors.New("すでに入室しています")
 	}
 
-	if err := r.db.Model(&room).Association("Users").Append(&user); err != nil {
-		return err
+	room.Users = append(room.Users, user)
+	err := r.db.Save(&room).Error
+	if err != nil {
+		return errors.New("部屋に入室できませんでした")
 	}
 
 	return nil
@@ -52,7 +54,7 @@ func (r RoomRepository) JoinRoom(room *model.Room, user *model.User) error {
 
 func (r RoomRepository) FindById(roomId uint) (*model.Room, error) {
 	var room model.Room
-	if err := r.db.Where("id = ?", roomId).First(&room).Error; err != nil {
+	if err := r.db.Preload("Users").Preload("PaymentDestinations").Table("rooms").Where("id = ?", roomId).First(&room).Error; err != nil {
 		return nil, errors.New("部屋が見つかりませんでした。")
 	}
 
@@ -61,12 +63,15 @@ func (r RoomRepository) FindById(roomId uint) (*model.Room, error) {
 
 func (r RoomRepository) FindByUserId(userId uint) ([]model.Room, error) {
 	var rooms []model.Room
-	err := r.db.Table("users_rooms").Where("user_id = ?", userId).Find(&rooms).Error
+	err := r.db.Table("rooms").
+		Select("rooms.*").
+		Joins("left join users_rooms as ur on ur.user_id = rooms.id").
+		Where("ur.user_id = ?", userId).Find(&rooms).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return rooms, nil
 }
 
 // TotalUnpaidAmount は部屋の未払い金額を返す

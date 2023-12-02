@@ -5,14 +5,16 @@ import (
 	"github.com/samber/lo"
 	"net/http"
 	"strconv"
+	dto "waroka/controllers/DTO"
 	"waroka/middleware"
 	"waroka/model"
 	"waroka/services"
 )
 
 type RoomController struct {
-	userService services.IUserService
-	roomService services.IRoomService
+	userService    services.IUserService
+	roomService    services.IRoomService
+	paymentService services.IPaymentService
 }
 
 func NewRoomController(
@@ -21,8 +23,9 @@ func NewRoomController(
 	p services.IPaymentService,
 ) *RoomController {
 	return &RoomController{
-		userService: u,
-		roomService: r,
+		userService:    u,
+		roomService:    r,
+		paymentService: p,
 	}
 }
 
@@ -35,11 +38,13 @@ func (r *RoomController) RegisterRoutes(e *echo.Echo) {
 	room.POST("/join", r.joinRoom)
 	room.GET("/list", r.listAll)
 	room.GET("/:id", r.byId)
+	room.GET("/:id/users", r.users)
 }
 
 type RoomDetail struct {
-	Id       uint   `json:"id"`
-	RoomName string `json:"room_name"`
+	Id          uint   `json:"id"`
+	RoomName    string `json:"room_name"`
+	TotalAmount int    `json:"total_amount"`
 }
 
 func (r *RoomController) createRoom(c echo.Context) error {
@@ -117,28 +122,24 @@ func (r *RoomController) listAll(c echo.Context) error {
 	rooms, err := r.roomService.ListRoom(user)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"message": err,
+			"message": "bad" + err.Error(),
 		})
 	}
 
 	roomList := lo.Map(rooms, func(rm model.Room, idx int) RoomDetail {
+		totalAmount := lo.Reduce(rm.PaymentDestinations, func(acc int, dest *model.PaymentDestination, idx int) int {
+			return acc + dest.TotalAmount
+		}, 0)
+
 		rd := RoomDetail{
-			Id:       rm.ID,
-			RoomName: rm.Name,
+			Id:          rm.ID,
+			RoomName:    rm.Name,
+			TotalAmount: totalAmount,
 		}
 		return rd
 	})
 
 	return c.JSON(http.StatusOK, roomList)
-}
-
-type RoomResponse struct {
-	Name                string
-	Id                  uint
-	Users               []*model.User
-	PaymentDestinations []*model.PaymentDestination
-	TotalAmount         int
-	TotalActiveAmount   int
 }
 
 func (r *RoomController) byId(c echo.Context) error {
@@ -160,9 +161,10 @@ func (r *RoomController) byId(c echo.Context) error {
 	room, err := r.roomService.FindById(uint(roomId))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"message": "IDを読み取れませんでした。",
+			"message": err,
 		})
 	}
+	println(room.Users)
 
 	destinations := room.PaymentDestinations
 	var totalAmount int
@@ -180,14 +182,42 @@ func (r *RoomController) byId(c echo.Context) error {
 		totalAmount += destination.TotalAmount
 	}
 
+	var userDtos []dto.UserDto
+	for _, user := range room.Users {
+		userDtos = append(userDtos, dto.UserDto{
+			Id:   user.ID,
+			Name: user.Name,
+		})
+	}
+
 	// すべての支払い金額を合計
-	var roomResponse RoomResponse
+	var roomResponse dto.RoomResponse
 	roomResponse.Id = room.ID
 	roomResponse.Name = room.Name
-	roomResponse.Users = room.Users
+	roomResponse.Users = userDtos
 	roomResponse.PaymentDestinations = room.PaymentDestinations
 	roomResponse.TotalAmount = totalAmount
 	roomResponse.TotalActiveAmount = totalActiveAmount
 
 	return c.JSON(http.StatusOK, roomResponse)
+}
+
+func (r *RoomController) users(c echo.Context) error {
+	userId := c.Get("user").(uint)
+	_, err := r.userService.GetUserById(userId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"message": "ログインしてください。",
+		})
+	}
+
+	roomId, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"message": "IDを読み取れませんでした。",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"roomid": roomId})
 }

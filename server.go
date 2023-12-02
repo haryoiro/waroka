@@ -36,14 +36,12 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
 
-	//e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-	//   AllowCredentials: true,
-	//   AllowOrigins: []string{"http://localhost:8080"},
-	//   AllowMethods: []string{
-	//       http.MethodPost,
-	//       http.MethodGet,
-	//   },
-	//}))
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowCredentials: true,
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.PATCH, echo.HEAD, echo.OPTIONS},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+	}))
 
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")

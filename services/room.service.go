@@ -46,16 +46,11 @@ func (r RoomService) CreateRoom(roomReq CreateRoomReq, user *model.User) (*model
 		room.Password = hashed
 	}
 	room.Name = roomReq.Name
+	room.Users = append(room.Users, user)
 
 	created, err := r.roomRepo.CreateRoom(&room)
 	if err != nil {
 		return nil, errors.New("部屋の作成に失敗しました")
-	}
-
-	//　作成ユーザーを部屋に入れる
-	err = r.roomRepo.JoinRoom(created, user)
-	if err != nil {
-		return nil, errors.New("入室処理に失敗しました")
 	}
 
 	return created, nil
@@ -96,6 +91,7 @@ func (r RoomService) JoinRoom(roomReq JoinRoomReq, user *model.User) (*model.Roo
 func (r RoomService) ListRoom(user *model.User) ([]model.Room, error) {
 	rooms, err := r.roomRepo.FindByUserId(user.ID)
 	if err != nil {
+		println(err.Error())
 		return nil, errors.New("部屋一覧の取得に失敗しました。")
 	}
 	return rooms, nil
