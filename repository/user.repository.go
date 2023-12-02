@@ -63,6 +63,16 @@ func (u UserRepository) Save(user *model.User) error {
 
 func (u UserRepository) FindAll() ([]model.User, error) {
 	var users []model.User
+
+	//r.db.Table("rooms").
+	//	Select("rooms.*").
+	//	Joins("left join users_rooms as ur on ur.user_id = rooms.id").
+	//	Where("ur.user_id = ?", userId).Find(&rooms).Error
+
+	u.db.Table("users").
+		Select("users.*").
+		Joins("LEFT JOIN usres_rooms AS ur ON ur.user_id = ")
+
 	if err := u.db.Preload("Rooms").Find(&users).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
